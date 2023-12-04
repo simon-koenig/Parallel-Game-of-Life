@@ -1,5 +1,5 @@
 
-mpi_rand: mpi_rand.c
+mpi_rand: mpi_rand.cpp
 	mpic++  -Wall  -o $@ $<
 
 clean:
