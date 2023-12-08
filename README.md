@@ -8,4 +8,4 @@ The aim of this project is to implement a sequential and multiple parallel algor
 
 
 
-Authors: Michael Ketter, Victor Beck, Simon König
+Authors: Michael Ketter, Viktor Beck, Simon König
