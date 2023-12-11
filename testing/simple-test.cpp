@@ -55,6 +55,34 @@ void updateLocalGrid(std::vector<std::vector<int>> &localGrid, int n_loc_r, int 
     localGrid = updatedLocalGrid;
 }
 
+// Function to exchange border values between neighboring processes
+void exchangeBorderValues(std::vector<std::vector<int>> &localGrid, int n_loc_r, int m_loc_c, MPI_Comm cartComm)
+{
+    MPI_Status status;
+
+    int west, east, north, south;
+
+    // Get ranks of neighboring processes
+    MPI_Cart_shift(cartComm, 0, 1, &north, &south);
+    MPI_Cart_shift(cartComm, 1, 1, &west, &east);
+
+    // Send and receive top border values
+    MPI_Sendrecv(&localGrid[0][0], m_loc_c, MPI_INT, north, 0,
+                 &localGrid[n_loc_r][0], m_loc_c, MPI_INT, south, 0, cartComm, &status);
+
+    // Send and receive bottom border values
+    MPI_Sendrecv(&localGrid[n_loc_r - 1][0], m_loc_c, MPI_INT, south, 1,
+                 &localGrid[-1][0], m_loc_c, MPI_INT, north, 1, cartComm, &status);
+
+    // Send and receive west border values
+    MPI_Sendrecv(&localGrid[0][0], n_loc_r, MPI_INT, west, 2,
+                 &localGrid[0][m_loc_c], n_loc_r, MPI_INT, east, 2, cartComm, &status);
+
+    // Send and receive east border values
+    MPI_Sendrecv(&localGrid[0][m_loc_c - 1], n_loc_r, MPI_INT, east, 3,
+                 &localGrid[0][-1], n_loc_r, MPI_INT, west, 3, cartComm, &status);
+}
+
 int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
@@ -75,16 +103,24 @@ int main(int argc, char *argv[])
     MPI_Comm cartComm;
     int dims[2] = {0, 0};    // 2D grid
     int periods[2] = {0, 0}; // Enable periodic boundary conditions
+    MPI_Dims_create(size, 2, dims);
+
+    if (rank == 0)
+    {
+        printf("dims: [%d, %d]\n", dims[0], dims[1]);
+    }
+
     MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 1, &cartComm);
 
     // Get the coordinates and dimensions of the grid
     int coords[2];
-    int dimsGrid[2];
-    MPI_Cart_get(cartComm, 2, dimsGrid, periods, coords);
+    // int dimsGrid[2];
+    //  MPI_Cart_get(cartComm, 2, dimsGrid, periods, coords);
+    MPI_Cart_coords(cartComm, rank, 2, coords);
 
     // Calculate the local size of the grid for each process
-    int n_loc_r = n / dimsGrid[0];
-    int m_loc_c = m / dimsGrid[1];
+    int n_loc_r = n / dims[0];
+    int m_loc_c = m / dims[1];
 
     // Create a 2D vector to represent the local portion of the grid
     std::vector<std::vector<int>> localGrid(n_loc_r, std::vector<int>(m_loc_c));
@@ -110,6 +146,8 @@ int main(int argc, char *argv[])
     // Perform time-stepping
     for (int step = 1; step <= numTimeSteps; ++step)
     {
+        // Exhcange value at borders
+        exchangeBorderValues(localGrid, n_loc_r, m_loc_c, cartComm);
         // Update the local grid based on the condition
         updateLocalGrid(localGrid, n_loc_r, m_loc_c);
 
