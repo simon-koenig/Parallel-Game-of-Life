@@ -303,6 +303,8 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
 
   // Print Grid before lifetime
   printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+  // Wait for all processes to be finished
+  MPI_Barrier(GRID_COMM);
 
   auto start = std::chrono::high_resolution_clock::now();
   for (size_t iter = 0; iter <= iterations; ++iter)
