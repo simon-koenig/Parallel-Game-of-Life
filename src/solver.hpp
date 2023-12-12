@@ -353,10 +353,24 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
                  WEST_RECV.data(), NY, MPI_INT, west_rank, 4, GRID_COMM, MPI_STATUS_IGNORE);
 
     // TODO: DIAGONAL SEND
+    // int NORTHEAST_RECV{0};
+
+    // int NORTHWEST_RECV{0};
+    // int NORTHWEST_SEND{0};
+
+    // int SOUTHWEST_SEND{0};
+    // int SOUTHEAST_RECV{0};
+    // int SOUTHEAST_SEND{0};
+
     // Northeast Send, Southwest Recv
-    MPI_Sendrecv(solutionView.get(NX - 1, NY - 1), 1, MPI_INT, north_east_rank, 5,
-                 solutionView.set(0, 0), 1, MPI_INT, south_west_rank, 5, GRID_COMM, MPI_STATUS_IGNORE);
+    NORTHEAST_SEND = solutionView.get(NX - 1, NY - 1);
+
+    MPI_Sendrecv(&NORTHEAST_SEND, 1, MPI_INT, north_east_rank, 5,
+                 &SOUTHWEST_RECV, 1, MPI_INT, south_west_rank, 5, GRID_COMM, MPI_STATUS_IGNORE);
+    solutionView.set(0, 0) = SOUTHWEST_RECV;
     MPI_Barrier(GRID_COMM);
+
+    // Northwest Send, Southeast Recv
 
     MPI_Barrier(GRID_COMM); // All processes have to wait for the others after each iteration for solution to be valid
 
