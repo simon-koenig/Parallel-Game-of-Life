@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <chrono>
+#include <thread>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -29,11 +30,23 @@ public:
   const Type &get(size_t i, size_t j) { return v[i + N * j]; }
   Type &set(size_t n) { return v[n]; }
   const Type &get(size_t n) { return v[n]; }
+
+  // function to access the underlying vector
+  std::vector<Type>& getVector() {
+    return v;
+  }
+  const std::vector<Type>& getVector() const {
+    return v;
+  }
 };
 
 template <typename Type>
 void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type> &solutionView)
 {
+  // barrier + sleep to make sure that everything gets printed correctly
+  MPI_Barrier(MPI_COMM_WORLD);
+  this_thread::sleep_for(chrono::milliseconds(100*myrank));
+
   for (int i = 0; i < mpi_numproc; i++)
   {
     if (myrank == i)
@@ -43,7 +56,7 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
       {
         for (size_t i = 0; i != NX; ++i)
         {
-          std::cout << solutionView.get(i, j);
+          std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";;
         }
         std::cout << ("\n");
       }
@@ -292,9 +305,27 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
   MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
+  // collect submatrices to assemble full matrix for correctness testing
+  std::vector<int> full_matrix(12 * 12);
+
+  MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
+              full_matrix.data(), solutionView.getVector().size(), MPI_INT,
+              0, GRID_COMM);
+
+  if (myrank == 0) {
+    std::cout << "Assembled Matrix:\n";
+    for (int i = 0; i < 12; ++i) {
+        for (int j = 0; j < 12; ++j) {
+            std::cout << (full_matrix[i * 12 + j] == 1 ? "■" : "□") << " ";
+        }
+        std::cout << std::endl;
+    }
+  }
+  MPI_Barrier(GRID_COMM);
+
   if (myrank == 0)
   {
-    std::cout << "solve Game of Life using 8 point stencil" << std::endl;
+    std::cout << "Solve Game of Life using 8 point stencil:" << std::endl << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << "++++++ Before Lifetime +++++++++++++++" << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
