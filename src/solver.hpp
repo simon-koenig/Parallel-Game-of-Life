@@ -1,5 +1,4 @@
 #pragma once
-
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -58,10 +57,10 @@ enum Cell
 {
   UNKNOWN = 0,
   DIR = 1,
-  DOWN = 2,
-  UP = 3,
-  LEFT = 4,
-  RIGHT = 5
+  SOUTH = 2,
+  NORTH = 3,
+  EAST = 4,
+  WEST = 5
 };
 
 // Function to get seeded random value
@@ -160,15 +159,15 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   for (size_t i = 1; i != NX - 1; ++i)
   {
 
-    domainView.set(i, 0) = Cell::DOWN;
+    domainView.set(i, 0) = Cell::SOUTH;
 
-    domainView.set(i, NY - 1) = Cell::UP;
+    domainView.set(i, NY - 1) = Cell::NORTH;
   }
 
   for (size_t j = 1; j != NY - 1; ++j)
   {
-    domainView.set(0, j) = Cell::LEFT;
-    domainView.set(NX - 1, j) = Cell::RIGHT;
+    domainView.set(0, j) = Cell::EAST;
+    domainView.set(NX - 1, j) = Cell::WEST;
   }
 
   //  std::cout << "Init Done Processor Rank " << myrank << std::endl;
@@ -235,23 +234,63 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     }
   };
 
+  // Init Send and Recv Buffers
   std::vector<int> solution2 = solution;
-  std::vector<int> UP_SEND(NX, 0);
-  std::vector<int> UP_RECV(NX, 0);
-  std::vector<int> DOWN_SEND(NX, 0);
-  std::vector<int> DOWN_RECV(NX, 0);
-  std::vector<int> LEFT_SEND(NY, 0);
-  std::vector<int> LEFT_RECV(NY, 0);
-  std::vector<int> RIGHT_SEND(NY, 0);
-  std::vector<int> RIGHT_RECV(NY, 0);
+  std::vector<int> NORTH_SEND(NX, 0);
+  std::vector<int> NORTH_RECV(NX, 0);
+  std::vector<int> SOUTH_SEND(NX, 0);
+  std::vector<int> SOUTH_RECV(NX, 0);
+  std::vector<int> EAST_SEND(NY, 0);
+  std::vector<int> EAST_RECV(NY, 0);
+  std::vector<int> WEST_SEND(NY, 0);
+  std::vector<int> WEST_RECV(NY, 0);
+  int NORTHEAST_RECV{0};
+  int NORTHEAST_SEND{0};
+  int NORTHWEST_RECV{0};
+  int NORTHWEST_SEND{0};
+  int SOUTHWEST_RECV{0};
+  int SOUTHWEST_SEND{0};
+  int SOUTHEAST_RECV{0};
+  int SOUTHEAST_SEND{0};
 
-  int up_rank;
-  int down_rank;
-  int left_rank;
-  int right_rank;
+  // Rank buffers
+  int north_rank;
+  int south_rank;
+  int east_rank;
+  int west_rank;
+  int north_east_rank;
+  int south_east_rank;
+  int north_west_rank;
+  int south_west_rank;
 
-  MPI_Cart_shift(GRID_COMM, 0, 1, &left_rank, &right_rank);
-  MPI_Cart_shift(GRID_COMM, 1, 1, &down_rank, &up_rank);
+  // Get ranks of neighboring cells in the cartesian grid
+  MPI_Cart_shift(GRID_COMM, 0, 1, &east_rank, &west_rank);
+  MPI_Cart_shift(GRID_COMM, 1, 1, &south_rank, &north_rank);
+
+  // Buffer for own coordinates to get the rank of diagonal coords
+  int own_coords[2];
+  int diag_coords[2];
+  MPI_Cart_coords(GRID_COMM, myrank, 2, own_coords); // Get own coords
+
+  // North East Diagonal
+  diag_coords[0] = (own_coords[0] - 1 + dims[0]) % dims[0];
+  diag_coords[1] = (own_coords[1] + 1) % dims[1];
+  MPI_Cart_rank(GRID_COMM, diag_coords, &north_east_rank); // Norht east rank now holds the rank processor of the processor north east
+
+  // South East Diagonal
+  diag_coords[0] = (own_coords[0] + 1) % dims[0];
+  diag_coords[1] = (own_coords[1] + 1) % dims[1];
+  MPI_Cart_rank(GRID_COMM, diag_coords, &south_east_rank); // South east rank now holds the rank processor of the processor north east
+
+  // North west Diagonal
+  diag_coords[0] = (own_coords[0] - 1 + dims[0]) % dims[0];
+  diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
+  MPI_Cart_rank(GRID_COMM, diag_coords, &north_west_rank); // North west rank now holds the rank processor of the processor north east
+
+  // South west Diagonal
+  diag_coords[0] = (own_coords[0] + 1) % dims[0];
+  diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
+  MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
   if (myrank == 0)
   {
@@ -279,39 +318,39 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     {
       for (size_t i = 0; i != NX; ++i)
       {
-        if (domainView.get(i, j) == Cell::UP)
-        {                                          //&& dims[1] != 1) {
-          UP_SEND[i] = solutionView.get(i, j - 1); // x
+        if (domainView.get(i, j) == Cell::NORTH)
+        {                                             //&& dims[1] != 1) {
+          NORTH_SEND[i] = solutionView.get(i, j - 1); // x
         }
-        else if (domainView.get(i, j) == Cell::DOWN)
-        {                                            //&& dims[1] != 1){
-          DOWN_SEND[i] = solutionView.get(i, j + 1); // x
+        else if (domainView.get(i, j) == Cell::SOUTH)
+        {                                             //&& dims[1] != 1){
+          SOUTH_SEND[i] = solutionView.get(i, j + 1); // x
         }
-        else if (domainView.get(i, j) == Cell::LEFT)
+        else if (domainView.get(i, j) == Cell::EAST)
         {
-          LEFT_SEND[j] = solutionView.get(i + 1, j);
+          EAST_SEND[j] = solutionView.get(i + 1, j);
         }
-        else if (domainView.get(i, j) == Cell::RIGHT)
+        else if (domainView.get(i, j) == Cell::WEST)
         {
-          RIGHT_SEND[j] = solutionView.get(i - 1, j);
+          WEST_SEND[j] = solutionView.get(i - 1, j);
         };
       }
     }
 
     if (ndims != 1) // If grid is only one dimensional
     {
-      MPI_Sendrecv(UP_SEND.data(), NX, MPI_INT, up_rank, 1,
-                   DOWN_RECV.data(), NX, MPI_INT, down_rank, 1, GRID_COMM, MPI_STATUS_IGNORE);
+      MPI_Sendrecv(NORTH_SEND.data(), NX, MPI_INT, north_rank, 1,
+                   SOUTH_RECV.data(), NX, MPI_INT, south_rank, 1, GRID_COMM, MPI_STATUS_IGNORE);
       MPI_Barrier(GRID_COMM);
-      MPI_Sendrecv(DOWN_SEND.data(), NX, MPI_INT, down_rank, 2,
-                   UP_RECV.data(), NX, MPI_INT, up_rank, 2, GRID_COMM, MPI_STATUS_IGNORE);
+      MPI_Sendrecv(SOUTH_SEND.data(), NX, MPI_INT, south_rank, 2,
+                   NORTH_RECV.data(), NX, MPI_INT, north_rank, 2, GRID_COMM, MPI_STATUS_IGNORE);
       MPI_Barrier(GRID_COMM);
     };
-    MPI_Sendrecv(RIGHT_SEND.data(), NY, MPI_INT, right_rank, 3,
-                 LEFT_RECV.data(), NY, MPI_INT, left_rank, 3, GRID_COMM, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(WEST_SEND.data(), NY, MPI_INT, west_rank, 3,
+                 EAST_RECV.data(), NY, MPI_INT, east_rank, 3, GRID_COMM, MPI_STATUS_IGNORE);
     MPI_Barrier(GRID_COMM);
-    MPI_Sendrecv(LEFT_SEND.data(), NY, MPI_INT, left_rank, 4,
-                 RIGHT_RECV.data(), NY, MPI_INT, right_rank, 4, GRID_COMM, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(EAST_SEND.data(), NY, MPI_INT, east_rank, 4,
+                 WEST_RECV.data(), NY, MPI_INT, west_rank, 4, GRID_COMM, MPI_STATUS_IGNORE);
 
     MPI_Barrier(GRID_COMM); // All processes have to wait for the others after each iteration for solution to be valid
 
@@ -320,21 +359,21 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     {
       for (size_t i = 0; i != NX; ++i)
       {
-        if (domainView.get(i, j) == Cell::UP)
+        if (domainView.get(i, j) == Cell::NORTH)
         { //&& dims[1] != 1){
-          solutionView.set(i, j) = UP_RECV[i];
+          solutionView.set(i, j) = NORTH_RECV[i];
         }
-        else if (domainView.get(i, j) == Cell::DOWN)
+        else if (domainView.get(i, j) == Cell::SOUTH)
         { //&& dims[1] != 1){
-          solutionView.set(i, j) = DOWN_RECV[i];
+          solutionView.set(i, j) = SOUTH_RECV[i];
         }
-        else if (domainView.get(i, j) == Cell::LEFT)
+        else if (domainView.get(i, j) == Cell::EAST)
         {
-          solutionView.set(i, j) = LEFT_RECV[j];
+          solutionView.set(i, j) = EAST_RECV[j];
         }
-        else if (domainView.get(i, j) == Cell::RIGHT)
+        else if (domainView.get(i, j) == Cell::WEST)
         {
-          solutionView.set(i, j) = RIGHT_RECV[j];
+          solutionView.set(i, j) = WEST_RECV[j];
         };
       }
     }
