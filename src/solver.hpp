@@ -352,6 +352,12 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     MPI_Sendrecv(EAST_SEND.data(), NY, MPI_INT, east_rank, 4,
                  WEST_RECV.data(), NY, MPI_INT, west_rank, 4, GRID_COMM, MPI_STATUS_IGNORE);
 
+    // TODO: DIAGONAL SEND
+    // Northeast Send, Southwest Recv
+    MPI_Sendrecv(solutionView.get(NX - 1, NY - 1), 1, MPI_INT, north_east_rank, 5,
+                 solutionView.set(0, 0), 1, MPI_INT, south_west_rank, 5, GRID_COMM, MPI_STATUS_IGNORE);
+    MPI_Barrier(GRID_COMM);
+
     MPI_Barrier(GRID_COMM); // All processes have to wait for the others after each iteration for solution to be valid
 
     // Update domain data with data received by the ghost layers
