@@ -370,7 +370,11 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     solutionView.set(0, 0) = SOUTHWEST_RECV;
     MPI_Barrier(GRID_COMM);
 
-    // Northwest Send, Southeast Recv
+    // TODO: Northwest Send, Southeast Recv
+
+    // TODO: Southeast Send, Northwest Recv
+
+    // TODO: Southwest Send, Northeast Recv
 
     MPI_Barrier(GRID_COMM); // All processes have to wait for the others after each iteration for solution to be valid
 
