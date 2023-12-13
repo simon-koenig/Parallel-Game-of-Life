@@ -54,12 +54,12 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
     if (myrank == i)
     {
       printf("%d: matrix\n", myrank);
-      for (size_t j = 1; j != NY; ++j)
+      for (size_t j = 0; j != NY; ++j)
       {
-        for (size_t i = 1; i != NX; ++i)
+        for (size_t i = 0; i != NX; ++i)
         {
-          std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
-          ;
+          std::cout << solutionView.get(i, j) << " ";
+          //std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
         }
         std::cout << ("\n");
       }
@@ -185,6 +185,11 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     domainView.set(0, j) = Cell::EAST;
     domainView.set(NX - 1, j) = Cell::WEST;
   }
+
+  if (myrank==0){
+    std::cout << "Domain matrices:" << std::endl;
+  }
+  printMatrices(myrank, mpi_numproc, NY, NX, domainView);
 
   //  std::cout << "Init Done Processor Rank " << myrank << std::endl;
 
@@ -315,25 +320,56 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
   MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
-  // collect submatrices to assemble full matrix for correctness testing
-  std::vector<int> full_matrix(12 * 12);
 
+  // collect submatrices to assemble full matrix for correctness testing
+  std::vector<int> submatrix_collection(dims[0]*dims[1]*NX*NY);
+
+  // get submatrices
   MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
-             full_matrix.data(), solutionView.getVector().size(), MPI_INT,
+             submatrix_collection.data(), solutionView.getVector().size(), MPI_INT,
              0, GRID_COMM);
 
-  if (myrank == 0)
-  {
-    std::cout << "Assembled Matrix:\n";
-    for (int i = 0; i < 12; ++i)
-    {
-      for (int j = 0; j < 12; ++j)
-      {
-        std::cout << (full_matrix[i * 12 + j] == 1 ? "■" : "□") << " ";
+  // get coordinates of submatrices
+  std::vector<int> all_coords(2 * numprocs);
+  MPI_Gather(&coords, dims[0] , MPI_INT, 
+             all_coords.data() , dims[0] , MPI_INT , 0 , GRID_COMM);
+
+  MPI_Barrier(GRID_COMM);
+
+  if (myrank == 0) {
+    std::cout << "All Coordinates:\n";
+    for (int i = 0; i < numprocs; ++i) {
+      std::cout << "Process " << i << ": (" << all_coords[2 * i] << ", " << all_coords[2 * i + 1] << ")\n";
+    }
+
+    // assemble full matrix ###### IN PROGRESS ######
+    std::vector<int> submatrix_tmp(NX*NY);
+
+    for (int p = 0; p < dims[0]*dims[1]; p++){
+      int count = 0;
+      for (int k = p*NX*NY; k < (p + 1)*NX*NY; k++){
+        if (count == 6){
+          std::cout << std::endl;
+          count = 0;
+        }
+        std::cout << submatrix_collection[k];
+        count++;
       }
       std::cout << std::endl;
     }
+
+    //// print full matrix
+    //std::cout << "Assembled full matrix:\n";
+    //for (int i = 0; i < 12; ++i)
+    //{
+    //  for (int j = 0; j < 12; ++j)
+    //  {
+    //    std::cout << (submatrix_collection[i * 12 + j] == 1 ? "■" : "□") << " ";
+    //  }
+    //  std::cout << std::endl;
+    //}
   }
+
   MPI_Barrier(GRID_COMM);
 
   if (myrank == 0)
