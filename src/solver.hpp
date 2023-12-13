@@ -32,10 +32,12 @@ public:
   const Type &get(size_t n) { return v[n]; }
 
   // function to access the underlying vector
-  std::vector<Type>& getVector() {
+  std::vector<Type> &getVector()
+  {
     return v;
   }
-  const std::vector<Type>& getVector() const {
+  const std::vector<Type> &getVector() const
+  {
     return v;
   }
 };
@@ -45,18 +47,19 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
 {
   // barrier + sleep to make sure that everything gets printed correctly
   MPI_Barrier(MPI_COMM_WORLD);
-  this_thread::sleep_for(chrono::milliseconds(100*myrank));
+  this_thread::sleep_for(chrono::milliseconds(100 * myrank));
 
   for (int i = 0; i < mpi_numproc; i++)
   {
     if (myrank == i)
     {
       printf("%d: matrix\n", myrank);
-      for (size_t j = 0; j != NY; ++j)
+      for (size_t j = 1; j != NY; ++j)
       {
-        for (size_t i = 0; i != NX; ++i)
+        for (size_t i = 1; i != NX; ++i)
         {
-          std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";;
+          std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
+          ;
         }
         std::cout << ("\n");
       }
@@ -148,6 +151,7 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   {
     NX = width_x + 2;
     NY = width_y + 2;
+    std::cout << "NX: " << NX << "  NY:   " << NY << std::endl;
   }
   else if (is_x_last_subdomain)
   {
@@ -171,7 +175,6 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   // TODO: Adapt this, there are no boundary conditions. Our domain is periodical in alle directions
   for (size_t i = 1; i != NX - 1; ++i)
   {
-
     domainView.set(i, 0) = Cell::SOUTH;
 
     domainView.set(i, NY - 1) = Cell::NORTH;
@@ -189,8 +192,8 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   //	std::cout << "coords: " << coords[0] << "," << coords[1] << " rank: " << myrank << " size: " << NX << "," << NY << std::endl;
 
   // TODO: Play the game of life here. We only have cross stencil (4 neighbours), but need star stencil (8 neighbours)
-  auto SolverJacobi = [](std::vector<int> &sol, std::vector<int> &sol2,
-                         size_t NX, size_t NY)
+  auto game = [](std::vector<int> &sol, std::vector<int> &sol2,
+                 size_t NX, size_t NY)
   {
     MatrixView<int> solView(sol, NX, NY);
     MatrixView<int> sol2View(sol2, NX, NY);
@@ -237,13 +240,23 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   //  solution approximation starting with boundary initialized to dirichlet
   //  conditions, else 0
 
+  // Buffer for own coordinates to get the rank of diagonal coords
+  int own_coords[2];
+  int diag_coords[2];
+
+  //
+  // Initialise Grid
+  //
+
+  int m_offset_r = own_coords[1] * NY;
+  int m_offset_c = own_coords[0] * NX;
   std::vector<int> solution(NX * NY, 0);
   MatrixView<int> solutionView(solution, NX, NY);
-  for (size_t j = 0; j != NY; ++j)
+  for (size_t i = 1; i != NY - 1; ++i)
   {
-    for (size_t i = 0; i != NX; ++i)
+    for (size_t j = 1; j != NX - 1; ++j)
     {
-      solutionView.set(i, j) = get_random_value(myrank + j, myrank + i, ndims, 10);
+      solutionView.set(i, j) = get_random_value(m_offset_r + i, m_offset_c + j, 2, 10);
     }
   };
 
@@ -280,9 +293,6 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   MPI_Cart_shift(GRID_COMM, 0, 1, &east_rank, &west_rank);
   MPI_Cart_shift(GRID_COMM, 1, 1, &south_rank, &north_rank);
 
-  // Buffer for own coordinates to get the rank of diagonal coords
-  int own_coords[2];
-  int diag_coords[2];
   MPI_Cart_coords(GRID_COMM, myrank, 2, own_coords); // Get own coords
 
   // North East Diagonal
@@ -309,23 +319,27 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   std::vector<int> full_matrix(12 * 12);
 
   MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
-              full_matrix.data(), solutionView.getVector().size(), MPI_INT,
-              0, GRID_COMM);
+             full_matrix.data(), solutionView.getVector().size(), MPI_INT,
+             0, GRID_COMM);
 
-  if (myrank == 0) {
+  if (myrank == 0)
+  {
     std::cout << "Assembled Matrix:\n";
-    for (int i = 0; i < 12; ++i) {
-        for (int j = 0; j < 12; ++j) {
-            std::cout << (full_matrix[i * 12 + j] == 1 ? "■" : "□") << " ";
-        }
-        std::cout << std::endl;
+    for (int i = 0; i < 12; ++i)
+    {
+      for (int j = 0; j < 12; ++j)
+      {
+        std::cout << (full_matrix[i * 12 + j] == 1 ? "■" : "□") << " ";
+      }
+      std::cout << std::endl;
     }
   }
   MPI_Barrier(GRID_COMM);
 
   if (myrank == 0)
   {
-    std::cout << "Solve Game of Life using 8 point stencil:" << std::endl << std::endl;
+    std::cout << "Solve Game of Life using 8 point stencil:" << std::endl
+              << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << "++++++ Before Lifetime +++++++++++++++" << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
@@ -337,12 +351,13 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   // Wait for all processes to be finished
   MPI_Barrier(GRID_COMM);
 
+  // START THE GAME OF LIFE
   auto start = std::chrono::high_resolution_clock::now();
   for (size_t iter = 0; iter <= iterations; ++iter)
   {
 
     // Update own domain
-    SolverJacobi(solution, solution2, NX, NY);
+    game(solution, solution2, NX, NY);
 
     // Preparing ghost layer for sending
     // => Handling ghost layers the data to be sent
@@ -469,7 +484,6 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
       std::cout << std::scientific << "|total runtime|= " << seconds_sum << " seconds" << std::endl;
       std::cout << std::scientific << "|average runtime per process|= " << seconds / numprocs << " seconds per processor" << std::endl;
     }
-    //  #endif
 
     //
     // Print results
