@@ -54,12 +54,12 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
     if (myrank == i)
     {
       printf("%d: matrix\n", myrank);
-      for (size_t j = 0; j != NY; ++j)
+      for (size_t j = 1; j != NY - 1; ++j) // Indexing to onyl print system matrix w/o ghost layers
       {
-        for (size_t i = 0; i != NX; ++i)
+        for (size_t i = 1; i != NX - 1; ++i)
         {
           std::cout << solutionView.get(i, j) << " ";
-          //std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
+          // std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
         }
         std::cout << ("\n");
       }
@@ -69,14 +69,19 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
   }
 }
 
+// Cell Naming for easy access
 enum Cell
 {
   UNKNOWN = 0,
-  DIR = 1,
+  NORTH = 1,
   SOUTH = 2,
-  NORTH = 3,
-  EAST = 4,
-  WEST = 5
+  EAST = 3,
+  WEST = 4,
+  NORTHEAST = 5,
+  SOUTHEAST = 6,
+  SOUTHWEST = 7,
+  NORTHWEST = 8
+
 };
 
 // Function to get seeded random value
@@ -94,8 +99,8 @@ uint8_t get_random_value(const int row_id, const int col_id, const int n,
   return r;
 }
 
-std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
-           int mpi_numproc, int ndims)
+std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
+                            int mpi_numproc, int ndims)
 {
 
   // Solver Template stops here, MPI subdomain solve starts
@@ -132,11 +137,11 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
   bool is_y_last_subdomain = coords[0] + 1 != dims[0] && coords[1] + 1 == dims[1];
   bool is_xy_last_subdomain = coords[0] + 1 == dims[0] && coords[1] + 1 == dims[1];
 
-  width_x = (resolution - 2) / dims[0];
-  width_y = (resolution - 2) / dims[1];
+  width_x = (resolution) / dims[0];
+  width_y = (resolution) / dims[1];
 
-  modulo_x = (resolution - 2) % dims[0];
-  modulo_y = (resolution - 2) % dims[1];
+  modulo_x = (resolution) % dims[0];
+  modulo_y = (resolution) % dims[1];
 
   last_width_x = width_x + modulo_x;
   last_width_y = width_y + modulo_y;
@@ -175,18 +180,25 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
   // TODO: Adapt this, there are no boundary conditions. Our domain is periodical in alle directions
   for (size_t i = 1; i != NX - 1; ++i)
   {
-    domainView.set(i, 0) = Cell::SOUTH;
+    domainView.set(i, 0) = Cell::NORTH;
 
-    domainView.set(i, NY - 1) = Cell::NORTH;
+    domainView.set(i, NY - 1) = Cell::SOUTH;
   }
 
   for (size_t j = 1; j != NY - 1; ++j)
   {
-    domainView.set(0, j) = Cell::EAST;
-    domainView.set(NX - 1, j) = Cell::WEST;
+    domainView.set(NX - 1, j) = Cell::EAST;
+    domainView.set(0, j) = Cell::WEST;
   }
 
-  if (myrank==0){
+  // Set Diagonal Elements
+  domainView.set(0, 0) = Cell::NORTHWEST;
+  domainView.set(NX - 1, 0) = Cell::NORTHEAST;
+  domainView.set(0, NY - 1) = Cell::SOUTHWEST;
+  domainView.set(NX - 1, NY - 1) = Cell::SOUTHEAST;
+
+  if (myrank == 0)
+  {
     std::cout << "Domain matrices:" << std::endl;
   }
   printMatrices(myrank, mpi_numproc, NY, NX, domainView);
@@ -204,9 +216,9 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
     MatrixView<int> sol2View(sol2, NX, NY);
     // MatrixView<int> rhsView(rhs, NX, NY);
 
-    for (size_t j = 1; j != NY - 1; ++j)
+    for (size_t i = 1; i != NX - 1; ++i)
     {
-      for (size_t i = 1; i != NX - 1; ++i)
+      for (size_t j = 1; j != NY - 1; ++j)
       {
         // Get neighbor values
         int center = solView.get(i, j);
@@ -218,11 +230,20 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
         int southeast = solView.get(i + 1, j + 1);
         int southwest = solView.get(i - 1, j + 1);
         int northwest = solView.get(i - 1, j - 1);
-        int sum = north + south + east + west +
-                  southeast + southwest + northeast + northwest;
+        int sum{0};
+        sum = north + south + east + west +
+              southeast + southwest + northeast + northwest;
+        // std::cout << "Hey from (i,j) = ( " << i << " , " << j << " ) , center = " << center
+        //           << " north = " << north << " south = " << south << " east = " << east << " west  =  " << west << std::endl;
+        // std::cout << "Hey from (i,j) = ( " << i << " , " << j << " ) , sum = " << sum << std::endl;
 
         // (huh huh huh huh) Staying alive condition
-        if ((center == 1 && sum == 2) || (center == 1 && sum == 3))
+        if (center == 1 && sum == 2)
+        {
+          sol2View.set(i, j) = 1;
+        }
+        // (huh huh huh huh) Staying alive condition
+        else if (center == 1 && sum == 3)
         {
           sol2View.set(i, j) = 1;
         }
@@ -257,9 +278,9 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
   int m_offset_c = own_coords[0] * NX;
   std::vector<int> solution(NX * NY, 0);
   MatrixView<int> solutionView(solution, NX, NY);
-  for (size_t i = 1; i != NY - 1; ++i)
+  for (size_t j = 1; j != NY - 1; ++j)
   {
-    for (size_t j = 1; j != NX - 1; ++j)
+    for (size_t i = 1; i != NX - 1; ++i)
     {
       solutionView.set(i, j) = get_random_value(m_offset_r + i, m_offset_c + j, 2, 10);
     }
@@ -320,9 +341,8 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
   diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
   MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
-
   // collect submatrices to assemble full matrix for correctness testing
-  std::vector<int> submatrix_collection(dims[0]*dims[1]*NX*NY);
+  std::vector<int> submatrix_collection(dims[0] * dims[1] * NX * NY);
 
   // get submatrices
   MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
@@ -331,24 +351,29 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
 
   // get coordinates of submatrices
   std::vector<int> all_coords(2 * numprocs);
-  MPI_Gather(&coords, dims[0] , MPI_INT, 
-             all_coords.data() , dims[0] , MPI_INT , 0 , GRID_COMM);
+  MPI_Gather(&coords, dims[0], MPI_INT,
+             all_coords.data(), dims[0], MPI_INT, 0, GRID_COMM);
 
   MPI_Barrier(GRID_COMM);
 
-  if (myrank == 0) {
+  if (myrank == 0)
+  {
     std::cout << "All Coordinates:\n";
-    for (int i = 0; i < numprocs; ++i) {
+    for (int i = 0; i < numprocs; ++i)
+    {
       std::cout << "Process " << i << ": (" << all_coords[2 * i] << ", " << all_coords[2 * i + 1] << ")\n";
     }
 
     // assemble full matrix ###### IN PROGRESS ######
-    std::vector<int> submatrix_tmp(NX*NY);
+    std::vector<int> submatrix_tmp(NX * NY);
 
-    for (int p = 0; p < dims[0]*dims[1]; p++){
+    for (int p = 0; p < dims[0] * dims[1]; p++)
+    {
       int count = 0;
-      for (int k = p*NX*NY; k < (p + 1)*NX*NY; k++){
-        if (count == 6){
+      for (int k = p * NX * NY; k < (p + 1) * NX * NY; k++)
+      {
+        if (count == 6)
+        {
           std::cout << std::endl;
           count = 0;
         }
@@ -359,15 +384,15 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
     }
 
     //// print full matrix
-    //std::cout << "Assembled full matrix:\n";
-    //for (int i = 0; i < 12; ++i)
+    // std::cout << "Assembled full matrix:\n";
+    // for (int i = 0; i < 12; ++i)
     //{
-    //  for (int j = 0; j < 12; ++j)
-    //  {
-    //    std::cout << (submatrix_collection[i * 12 + j] == 1 ? "■" : "□") << " ";
-    //  }
-    //  std::cout << std::endl;
-    //}
+    //   for (int j = 0; j < 12; ++j)
+    //   {
+    //     std::cout << (submatrix_collection[i * 12 + j] == 1 ? "■" : "□") << " ";
+    //   }
+    //   std::cout << std::endl;
+    // }
   }
 
   MPI_Barrier(GRID_COMM);
@@ -388,12 +413,10 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
   MPI_Barrier(GRID_COMM);
 
   // START THE GAME OF LIFE
-  auto start = MPI_Wtime();;
+  auto start = MPI_Wtime();
+  ;
   for (size_t iter = 0; iter <= iterations; ++iter)
   {
-
-    // Update own domain
-    game(solution, solution2, NX, NY);
 
     // Preparing ghost layer for sending
     // => Handling ghost layers the data to be sent
@@ -404,19 +427,19 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
       {
         if (domainView.get(i, j) == Cell::NORTH)
         {                                             //&& dims[1] != 1) {
-          NORTH_SEND[i] = solutionView.get(i, j - 1); // x
+          NORTH_SEND[i] = solutionView.get(i, j + 1); // x
         }
         else if (domainView.get(i, j) == Cell::SOUTH)
         {                                             //&& dims[1] != 1){
-          SOUTH_SEND[i] = solutionView.get(i, j + 1); // x
+          SOUTH_SEND[i] = solutionView.get(i, j - 1); // x
         }
         else if (domainView.get(i, j) == Cell::EAST)
         {
-          EAST_SEND[j] = solutionView.get(i + 1, j);
+          EAST_SEND[j] = solutionView.get(i - 1, j);
         }
         else if (domainView.get(i, j) == Cell::WEST)
         {
-          WEST_SEND[j] = solutionView.get(i - 1, j);
+          WEST_SEND[j] = solutionView.get(i + 1, j);
         };
       }
     }
@@ -481,6 +504,8 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
     MPI_Barrier(GRID_COMM);
 
     // Update domain data with data received by the ghost layers
+    //
+    // Non Diagonal Send
     for (size_t j = 0; j != NY; ++j)
     {
       for (size_t i = 0; i != NX; ++i)
@@ -503,12 +528,55 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
         };
       }
     }
+
+    // Diagonal Send
+
+    // Northeast Send, Southwest Recv
+    NORTHEAST_SEND = solutionView.get(NX - 2, 1);
+
+    MPI_Sendrecv(&NORTHEAST_SEND, 1, MPI_INT, north_east_rank, 5,
+                 &SOUTHWEST_RECV, 1, MPI_INT, south_west_rank, 5, GRID_COMM, MPI_STATUS_IGNORE);
+    // Southwest Recv
+    solutionView.set(0, NY - 1) = SOUTHWEST_RECV;
+    MPI_Barrier(GRID_COMM);
+
+    // TODO: Northwest Send
+    NORTHWEST_SEND = solutionView.get(1, 1);
+
+    MPI_Sendrecv(&NORTHWEST_SEND, 1, MPI_INT, north_east_rank, 6,
+                 &SOUTHEAST_RECV, 1, MPI_INT, south_west_rank, 6, GRID_COMM, MPI_STATUS_IGNORE);
+    // Southeast Recv
+    solutionView.set(NX - 1, NY - 1) = SOUTHEAST_RECV;
+    MPI_Barrier(GRID_COMM);
+
+    // TODO: Southeast Send
+    SOUTHEAST_SEND = solutionView.get(NX - 2, NY - 2);
+
+    MPI_Sendrecv(&SOUTHEAST_SEND, 1, MPI_INT, north_east_rank, 6,
+                 &NORTHWEST_RECV, 1, MPI_INT, south_west_rank, 6, GRID_COMM, MPI_STATUS_IGNORE);
+    // Northwest Recv
+    solutionView.set(0, 0) = NORTHWEST_RECV;
+    MPI_Barrier(GRID_COMM);
+
+    // TODO: Southwest Send
+    SOUTHWEST_SEND = solutionView.get(1, NY - 2);
+
+    MPI_Sendrecv(&SOUTHWEST_SEND, 1, MPI_INT, north_east_rank, 6,
+                 &NORTHEAST_RECV, 1, MPI_INT, south_west_rank, 6, GRID_COMM, MPI_STATUS_IGNORE);
+    // Northeast Recv
+    solutionView.set(NX - 1, 0) = NORTHEAST_RECV;
+
+    MPI_Barrier(GRID_COMM);
+
+    // Update own domain
+    game(solution, solution2, NX, NY);
   };
   // Wait for all processes to be finished
   MPI_Barrier(GRID_COMM);
 
   {
-    auto stop = MPI_Wtime();;
+    auto stop = MPI_Wtime();
+    ;
     auto seconds = stop - start;
 
     double seconds_sum;
@@ -538,11 +606,10 @@ std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
 
     printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
 
-    std::array<double,3> timings;
+    std::array<double, 3> timings;
     timings[0] = seconds_sum;
     timings[1] = seconds_max;
     timings[2] = seconds_sum / numprocs;
     return timings;
-    
   };
 }
