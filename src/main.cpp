@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
+#include <array>
 #ifdef USEMPI
 #include <mpi.h>
 #endif
@@ -48,10 +49,18 @@ int main(int argc, char *argv[])
     std::cout << "Start " << ndims << "-D Solver for [" << iterations << "] iterations with resolution of [" << resolution << "]" << std::endl;
   };
 
-  solve(resolution, iterations, rank, numproc, ndims);
+  std::array<double,3> timings;
+  timings = solve(resolution, iterations, rank, numproc, ndims);
 
   if (rank == 0)
   {
+    std::cout << std::scientific << "|summed total runtime of all processes|= " << timings[0]<< " seconds" << std::endl;
+    std::cout << std::scientific << "|maximum runtime of all processes|= " << timings[1] << " seconds" << std::endl;
+    std::cout << std::scientific << "|average runtime per process|= " << timings[2] << " seconds per processor" << std::endl;
+  }
+
+  if (rank == 0)
+  {    
     std::cout << "|+++++++++++++++++++++ Done +++++++++++++++++++++++|" << std::endl;
     fflush(stdout);
   };

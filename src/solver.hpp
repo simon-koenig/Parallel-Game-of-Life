@@ -94,7 +94,7 @@ uint8_t get_random_value(const int row_id, const int col_id, const int n,
   return r;
 }
 
-void solve(size_t resolution, size_t iterations, int mpi_rank,
+std::array<double,3>  solve(size_t resolution, size_t iterations, int mpi_rank,
            int mpi_numproc, int ndims)
 {
 
@@ -388,7 +388,7 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   MPI_Barrier(GRID_COMM);
 
   // START THE GAME OF LIFE
-  auto start = std::chrono::high_resolution_clock::now();
+  auto start = MPI_Wtime();;
   for (size_t iter = 0; iter <= iterations; ++iter)
   {
 
@@ -508,22 +508,25 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
   MPI_Barrier(GRID_COMM);
 
   {
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count();
+    auto stop = MPI_Wtime();;
+    auto seconds = stop - start;
 
     double seconds_sum;
+    double seconds_max;
 
-    MPI_Reduce(&seconds, &seconds_sum, 1, MPI_DOUBLE, MPI_SUM, 0, GRID_COMM);
-
-    if (myrank == 0)
-    {
-      std::cout << std::scientific << "|total runtime|= " << seconds_sum << " seconds" << std::endl;
-      std::cout << std::scientific << "|average runtime per process|= " << seconds / numprocs << " seconds per processor" << std::endl;
-    }
+    MPI_Allreduce(&seconds, &seconds_sum, 1, MPI_DOUBLE, MPI_SUM, GRID_COMM);
+    MPI_Allreduce(&seconds, &seconds_max, 1, MPI_DOUBLE, MPI_MAX, GRID_COMM);
 
     //
     // Print results
     //
+
+    if (myrank == 0)
+    {
+      std::cout << std::scientific << "|summed total runtime of all processes|= " << seconds_sum << " seconds" << std::endl;
+      std::cout << std::scientific << "|maximum runtime of all processes|= " << seconds_max << " seconds" << std::endl;
+      std::cout << std::scientific << "|average runtime per process|= " << seconds_sum / numprocs << " seconds per processor" << std::endl;
+    }
 
     if (myrank == 0)
     {
@@ -534,5 +537,12 @@ void solve(size_t resolution, size_t iterations, int mpi_rank,
     }
 
     printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+
+    std::array<double,3> timings;
+    timings[0] = seconds_sum;
+    timings[1] = seconds_max;
+    timings[2] = seconds_sum / numprocs;
+    return timings;
+    
   };
 }
