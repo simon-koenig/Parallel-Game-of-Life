@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <iomanip>
 #include <iostream>
+#include <stdio.h>
 #include <vector>
 #include <array>
 #ifdef USEMPI
@@ -8,6 +9,30 @@
 #endif
 #include "arguments.hpp"
 #include "solver.hpp"
+
+void StoreTimings(char* filename, int numproc, int repetitions, int resolution, int iterations, double* total, double* mean, double* max)
+{   
+    char datafile[120] = "./";
+    strcat(datafile,filename);
+    FILE *fp = fopen(datafile, "w");
+
+    // store basic information about run
+    fprintf(fp, "\n");
+    fprintf(fp, "# processes = %i \n", numproc);
+    fprintf(fp, "# repetitions = %i \n", repetitions);
+    fprintf(fp, "# resolution = %i \n", resolution);
+    fprintf(fp, "# iterations = %i \n", iterations);
+    fprintf(fp, "\n");
+    fprintf(fp, "summed time [s], mean time per processor [s], maximum time per processor [s] \n");    
+
+    for(int i = 0; i < repetitions; i++)
+    {
+      // store values
+      fprintf(fp, "%.6f,  %.6f, %.6f\n", total[i], mean[i], max[i]);
+    }  
+    
+    fclose(fp);
+}
 
 int main(int argc, char *argv[])
 {
@@ -24,6 +49,12 @@ int main(int argc, char *argv[])
   assert(iterations > 0);
   assert(numproc > 0);
   assert(repetitions > 0);
+
+  double* total = (double*)malloc(sizeof(double)*repetitions);
+  double* mean = (double*)malloc(sizeof(double)*repetitions);
+  double* max = (double*)malloc(sizeof(double)*repetitions);
+
+  std::array<double,3> timings;
 
   #ifdef USEMPI
     MPI_Init(&argc, &argv);
@@ -57,8 +88,14 @@ int main(int argc, char *argv[])
       std::cout << "Start " << ndims << "-D Solver for [" << iterations << "] iterations with resolution of [" << resolution << "]" << std::endl;
     };
 
-    std::array<double,3> timings;
     timings = solve(resolution, iterations, rank, numproc, ndims);
+
+    if (rank == 0)
+    {
+      total[exp_counter - 1] = timings[0];
+      mean[exp_counter - 1] = timings[1];
+      max[exp_counter - 1] = timings[2];
+    }
 
     if (rank == 0)
     {
@@ -77,6 +114,14 @@ int main(int argc, char *argv[])
   #ifdef USEMPI
     MPI_Finalize();
   #endif
+
+  char filename[120];
+  sprintf(filename, "%s%d%s%d%s%d%s%d%s", "P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
+  StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
+
+  free(total);
+  free(mean);
+  free(max);
 
   return 0;
 }

@@ -593,7 +593,7 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
       fflush(stdout);
     }
 
-    printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+    //printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
 
     std::array<double, 3> timings;
     timings[0] = seconds_sum;
