@@ -25,13 +25,16 @@ int main(int argc, char *argv[])
   assert(numproc > 0);
   assert(repetitions > 0);
 
-  std::cout << "Starting Game of Life for " << iterations << " iterations with resolution of " << resolution << "living points." << std::endl;
-
   #ifdef USEMPI
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   #endif
+
+  if (rank == 0)
+  {
+    std::cout << "Starting Game of Life for " << iterations << " iterations with resolution of " << resolution << "living points." << std::endl;
+  }
 
 
   for (int exp_counter = 1; exp_counter <= repetitions; exp_counter++)

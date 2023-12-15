@@ -21,9 +21,9 @@ GameOfLifeMPI: Makefile main.cpp solver.hpp arguments.hpp
 	$(MPICXX) main.cpp -o GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 
 run: Makefile GameOfLifeMPI
-	mpirun -n $(NPROCS) --use-hwthread-cpus GameOfLifeMPI $(NPROCS) $(ITER) $(RESOLUTION) $(REPETITION)
+	mpirun -n $(NPROCS) --use-hwthread-cpus GameOfLifeMPI $(NPROCS) $(REPETITION) $(RESOLUTION) $(ITER)
 
 clean:
-	rm jacobiMPI 
+	rm GameOfLifeMPI
 # jacobiSERIAL
 

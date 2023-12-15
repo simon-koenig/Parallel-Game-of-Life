@@ -24,7 +24,7 @@ public:
   const int N, M;
   MatrixView(std::vector<Type> &v, int N, int M) : v(v), N(N), M(M)
   {
-    assert(v.size() / N == M);
+    assert(static_cast<int>(v.size()) / N == M);
   }
   Type &set(int i, int j) { return v[i + N * j]; }
   const Type &get(int i, int j) { return v[i + N * j]; }
