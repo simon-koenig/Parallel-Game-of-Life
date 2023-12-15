@@ -12,15 +12,16 @@ CXXFLAGS := $(CXXFLAGS) -std=c++14 -O3 -Wall -pedantic -march=native -ffast-math
 NPROCS=4
 RESOLUTION=10
 ITER=5
+REPETITION=10
 
 #jacobiSERIAL: Makefile main.cpp solver.hpp arguments.hpp
 #	$(CXX) main.cpp -o jacobiSERIAL $(CXXFLAGS)
 
-jacobiMPI: Makefile main.cpp solver.hpp arguments.hpp
-	$(MPICXX) main.cpp -o jacobiMPI -lpthread -DUSEMPI $(CXXFLAGS)
+GameOfLifeMPI: Makefile main.cpp solver.hpp arguments.hpp
+	$(MPICXX) main.cpp -o GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 
-run: Makefile jacobiMPI
-	mpirun -n $(NPROCS) --use-hwthread-cpus jacobiMPI "2D" $(RESOLUTION) $(ITER)
+run: Makefile GameOfLifeMPI
+	mpirun -n $(NPROCS) --use-hwthread-cpus GameOfLifeMPI $(NPROCS) $(ITER) $(RESOLUTION) $(REPETITION)
 
 clean:
 	rm jacobiMPI 

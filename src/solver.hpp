@@ -21,15 +21,15 @@ private:
   MatrixView &operator=(const MatrixView &);
 
 public:
-  const size_t N, M;
-  MatrixView(std::vector<Type> &v, size_t N, size_t M) : v(v), N(N), M(M)
+  const int N, M;
+  MatrixView(std::vector<Type> &v, int N, int M) : v(v), N(N), M(M)
   {
     assert(v.size() / N == M);
   }
-  Type &set(size_t i, size_t j) { return v[i + N * j]; }
-  const Type &get(size_t i, size_t j) { return v[i + N * j]; }
-  Type &set(size_t n) { return v[n]; }
-  const Type &get(size_t n) { return v[n]; }
+  Type &set(int i, int j) { return v[i + N * j]; }
+  const Type &get(int i, int j) { return v[i + N * j]; }
+  Type &set(int n) { return v[n]; }
+  const Type &get(int n) { return v[n]; }
 
   // function to access the underlying vector
   std::vector<Type> &getVector()
@@ -54,9 +54,9 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
     if (myrank == i)
     {
       printf("%d: matrix\n", myrank);
-      for (size_t j = 1; j != NY - 1; ++j) // Indexing to onyl print system matrix w/o ghost layers
+      for (int j = 1; j != NY - 1; ++j) // Indexing to onyl print system matrix w/o ghost layers
       {
-        for (size_t i = 1; i != NX - 1; ++i)
+        for (int i = 1; i != NX - 1; ++i)
         {
           std::cout << solutionView.get(i, j) << " ";
           // std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
@@ -99,7 +99,7 @@ uint8_t get_random_value(const int row_id, const int col_id, const int n,
   return r;
 }
 
-std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
+std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
                             int mpi_numproc, int ndims)
 {
 
@@ -114,10 +114,7 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
   // Build Cartesian Grid
   //  std::cout << "Init Processor Rank " << myrank << std::endl;
   int dims[2] = {0, 0};
-  if (ndims == 1)
-  {
-    dims[1] = 1;
-  }
+
   MPI_Barrier(MPI_COMM_WORLD);
   MPI_Dims_create(numprocs, ndims, dims);
   MPI_Comm GRID_COMM;
@@ -130,8 +127,8 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
 
   int width_x, width_y, last_width_x, last_width_y;
   int modulo_x, modulo_y;
-  size_t NY = 0;
-  size_t NX = 0;
+  int NY = 0;
+  int NX = 0;
   bool is_subdomain = coords[0] + 1 != dims[0] && coords[1] + 1 != dims[1];
   bool is_x_last_subdomain = coords[0] + 1 == dims[0] && coords[1] + 1 != dims[1];
   bool is_y_last_subdomain = coords[0] + 1 != dims[0] && coords[1] + 1 == dims[1];
@@ -178,14 +175,14 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
   MatrixView<int> domainView(domain, NX, NY);
 
   // TODO: Adapt this, there are no boundary conditions. Our domain is periodical in alle directions
-  for (size_t i = 1; i != NX - 1; ++i)
+  for (int i = 1; i != NX - 1; ++i)
   {
     domainView.set(i, 0) = Cell::NORTH;
 
     domainView.set(i, NY - 1) = Cell::SOUTH;
   }
 
-  for (size_t j = 1; j != NY - 1; ++j)
+  for (int j = 1; j != NY - 1; ++j)
   {
     domainView.set(NX - 1, j) = Cell::EAST;
     domainView.set(0, j) = Cell::WEST;
@@ -210,15 +207,15 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
 
   // TODO: Play the game of life here. We only have cross stencil (4 neighbours), but need star stencil (8 neighbours)
   auto game = [](std::vector<int> &sol, std::vector<int> &sol2,
-                 size_t NX, size_t NY)
+                 int NX, int NY)
   {
     MatrixView<int> solView(sol, NX, NY);
     MatrixView<int> sol2View(sol2, NX, NY);
     // MatrixView<int> rhsView(rhs, NX, NY);
 
-    for (size_t i = 1; i != NX - 1; ++i)
+    for (int i = 1; i != NX - 1; ++i)
     {
-      for (size_t j = 1; j != NY - 1; ++j)
+      for (int j = 1; j != NY - 1; ++j)
       {
         // Get neighbor values
         int center = solView.get(i, j);
@@ -278,9 +275,9 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
   int m_offset_c = own_coords[0] * NX;
   std::vector<int> solution(NX * NY, 0);
   MatrixView<int> solutionView(solution, NX, NY);
-  for (size_t j = 1; j != NY - 1; ++j)
+  for (int j = 1; j != NY - 1; ++j)
   {
-    for (size_t i = 1; i != NX - 1; ++i)
+    for (int i = 1; i != NX - 1; ++i)
     {
       solutionView.set(i, j) = get_random_value(m_offset_r + i, m_offset_c + j, 2, 10);
     }
@@ -415,15 +412,15 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
   // START THE GAME OF LIFE
   auto start = MPI_Wtime();
   ;
-  for (size_t iter = 0; iter <= iterations; ++iter)
+  for (int iter = 0; iter <= iterations; ++iter)
   {
 
     // Preparing ghost layer for sending
     // => Handling ghost layers the data to be sent
 
-    for (size_t j = 0; j != NY; ++j)
+    for (int j = 0; j != NY; ++j)
     {
-      for (size_t i = 0; i != NX; ++i)
+      for (int i = 0; i != NX; ++i)
       {
         if (domainView.get(i, j) == Cell::NORTH)
         {                                             //&& dims[1] != 1) {
@@ -506,9 +503,9 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
     // Update domain data with data received by the ghost layers
     //
     // Non Diagonal Send
-    for (size_t j = 0; j != NY; ++j)
+    for (int j = 0; j != NY; ++j)
     {
-      for (size_t i = 0; i != NX; ++i)
+      for (int i = 0; i != NX; ++i)
       {
         if (domainView.get(i, j) == Cell::NORTH)
         { //&& dims[1] != 1){
@@ -576,7 +573,6 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
 
   {
     auto stop = MPI_Wtime();
-    ;
     auto seconds = stop - start;
 
     double seconds_sum;
@@ -588,13 +584,6 @@ std::array<double, 3> solve(size_t resolution, size_t iterations, int mpi_rank,
     //
     // Print results
     //
-
-    if (myrank == 0)
-    {
-      std::cout << std::scientific << "|summed total runtime of all processes|= " << seconds_sum << " seconds" << std::endl;
-      std::cout << std::scientific << "|maximum runtime of all processes|= " << seconds_max << " seconds" << std::endl;
-      std::cout << std::scientific << "|average runtime per process|= " << seconds_sum / numprocs << " seconds per processor" << std::endl;
-    }
 
     if (myrank == 0)
     {

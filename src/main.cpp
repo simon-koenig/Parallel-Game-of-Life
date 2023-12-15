@@ -11,38 +11,40 @@
 
 int main(int argc, char *argv[])
 {
-  int rank = 0;
-  int numproc = 1;
-  int ndims = 1;
-#ifdef USEMPI
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &numproc);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
 
   // parse command line arguments
+  int rank = 0;
+  auto numproc = convertTo<int>(1, 4, argc, argv);
+  auto repetitions = convertTo<int>(2, 10, argc, argv);
+  auto resolution = convertTo<int>(3, 32, argc, argv);
+  auto iterations = convertTo<int>(4, 1000, argc, argv);
+  int ndims = 2;
+
+  assert(resolution > 0);
+  assert(iterations > 0);
+  assert(numproc > 0);
+  assert(repetitions > 0);
+
+for (int exp_counter = 1; exp_counter <= repetitions; exp_counter++)
+{ 
+
+  #ifdef USEMPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &numproc);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  #endif
 
   if (rank == 0)
   {
-    std::cout << "|++++++++++++++++++++++++++++++++++++++++++++|" << std::endl;
+    std::cout << "|++++++++++++++++++++> " << "Starting " << exp_counter << " Experiment!" << " |+++++++++++++++++++++|" << std::endl;
   };
-  auto resolution = convertTo<int>(2, 32, argc, argv);
-  auto iterations = convertTo<int>(3, 1000, argc, argv);
-  std::string str_ndims = argv[1];
 
-  if (str_ndims == "2D")
-  {
-    ndims = 2;
-  };
   if (rank == 0)
   {
     std::cout << "numproc=" << numproc << std::endl;
     std::cout << "resolution=" << resolution << std::endl;
     std::cout << "iterations=" << iterations << std::endl;
   };
-
-  assert(resolution > 0);
-  assert(iterations > 0);
 
   if (rank == 0)
   {
@@ -61,12 +63,13 @@ int main(int argc, char *argv[])
 
   if (rank == 0)
   {    
-    std::cout << "|+++++++++++++++++++++ Done +++++++++++++++++++++++|" << std::endl;
+    std::cout << "|++++++++++++++++++++> " << "Done with Experiment " << exp_counter << "!" << " |+++++++++++++++++++++|" << std::endl;
     fflush(stdout);
   };
-#ifdef USEMPI
-  MPI_Finalize();
-#endif
+  #ifdef USEMPI
+    MPI_Finalize();
+  #endif
+};
 
   return 0;
 }
