@@ -14,16 +14,13 @@ RESOLUTION=10
 ITER=5
 REPETITION=10
 
-#jacobiSERIAL: Makefile main.cpp solver.hpp arguments.hpp
-#	$(CXX) main.cpp -o jacobiSERIAL $(CXXFLAGS)
 
-GameOfLifeMPI: Makefile main.cpp solver.hpp arguments.hpp
-	$(MPICXX) main.cpp -o GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
+GameOfLifeMPI: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
+	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 
-run: Makefile GameOfLifeMPI
-	mpirun -n $(NPROCS) --use-hwthread-cpus GameOfLifeMPI $(NPROCS) $(REPETITION) $(RESOLUTION) $(ITER)
+run: Makefile ./bin/GameOfLifeMPI
+	mpirun -n $(NPROCS) --use-hwthread-cpus ./bin/GameOfLifeMPI $(NPROCS) $(REPETITION) $(RESOLUTION) $(ITER)
 
 clean:
 	rm GameOfLifeMPI
-# jacobiSERIAL
 
