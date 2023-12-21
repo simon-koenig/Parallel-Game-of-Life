@@ -11,6 +11,7 @@
 #include <mpi.h>
 // #endif
 #include <assert.h>
+#include "game_sequential.hpp"
 
 template <typename Type>
 class MatrixView
@@ -42,11 +43,16 @@ public:
   }
 };
 
+
 template <typename Type>
-void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type> &solutionView)
+void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type> &solutionView, bool excl_ghost_layer=true)
 {
-  // barrier + sleep to make sure that everything gets printed correctly
-  MPI_Barrier(MPI_COMM_WORLD);
+  int offset = 1;
+  if (excl_ghost_layer == false){
+    offset = 0;
+  }
+
+  // sleep to make sure that everything gets printed correctly
   this_thread::sleep_for(chrono::milliseconds(100 * myrank));
 
   for (int i = 0; i < mpi_numproc; i++)
@@ -54,19 +60,74 @@ void printMatrices(int myrank, int mpi_numproc, int NY, int NX, MatrixView<Type>
     if (myrank == i)
     {
       printf("%d: matrix\n", myrank);
-      for (int j = 1; j != NY - 1; ++j) // Indexing to onyl print system matrix w/o ghost layers
+      for (int j = offset; j != NY - offset; ++j) // Indexing to onyl print system matrix w/o ghost layers
       {
-        for (int i = 1; i != NX - 1; ++i)
+        for (int i = offset; i != NX - offset; ++i)
         {
-          std::cout << solutionView.get(i, j) << " ";
-          // std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
+          //std::cout << solutionView.get(i, j) << " ";
+          std::cout << (solutionView.get(i, j) == 1 ? "■" : "□") << " ";
         }
         std::cout << ("\n");
       }
     }
     fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
   }
+}
+
+template <typename Type>
+std::vector<int> getGrid(int myrank, int numprocs, int (&dims)[2], int (&coords)[2], int NX, int NY, MatrixView<Type> &solutionView, MPI_Comm COMM)
+{
+  // collect submatrices to assemble full matrix for correctness testing
+  int full_matrix_size = dims[0]*dims[1]*(NX-2)*(NY-2);
+
+  std::vector<int> submatrix_collection(NX * NY * dims[0] * dims[1]);
+  //std::cout << "SIZES: " << submatrix_collection.size() << " " << solutionView.getVector().size() << std::endl;
+
+  // cheap way to "make sure" that gather is called in the correct order
+  this_thread::sleep_for(chrono::milliseconds(100 * myrank));
+  
+  // get coordinates of submatrices
+  std::vector<int> all_coords(2 * numprocs);
+  MPI_Gather(&coords, dims[0] , MPI_INT, 
+             all_coords.data() , dims[0] , MPI_INT , 0 , COMM);
+
+  // get submatrices
+  MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
+             submatrix_collection.data(), solutionView.getVector().size(), MPI_INT,
+             0, COMM);
+  
+  MPI_Barrier(COMM);
+
+  std::vector<int> fm(full_matrix_size);
+  MatrixView<int> full_matrix (fm, dims[0]*(NX-2), dims[1]*(NY-2));
+
+  if (myrank == 0) {
+    /*
+    std::cout << "All Coordinates:\n";
+    for (int i = 0; i < numprocs; ++i) {
+      std::cout << "Process " << i << ": (" << all_coords[2 * i] << ", " << all_coords[2 * i + 1] << ")\n";
+    }*/
+
+    int count = 1;
+    for (int p = 0; p < dims[0]*dims[1]; p++){
+      //std::cout << all_coords[2 * p] << all_coords[2 * p + 1] << std::endl;
+      count += NX;
+      int y = 0;
+      for (int j = 1 + p*(NY-2); j < 1 + (p + 1)*(NY-2); j++){
+        int x = 0;
+        for (int i = j*(NX) + 1; i < (j + 1)*(NX) - 1; i++){
+          full_matrix.set(x+(NX-2)*all_coords[2 * p], y+(NY-2)*all_coords[2 * p + 1]) = submatrix_collection[count];
+          x++;
+          count++;
+        }
+        y++;
+        count += 2;
+      }
+      count += NX;
+    }
+    //printMatrices(myrank, numprocs, dims[0]*(NX-2), dims[1]*(NY-2), full_matrix, false);
+  } 
+  return full_matrix.getVector();
 }
 
 // Cell Naming for easy access
@@ -193,12 +254,6 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
   domainView.set(NX - 1, 0) = Cell::NORTHEAST;
   domainView.set(0, NY - 1) = Cell::SOUTHWEST;
   domainView.set(NX - 1, NY - 1) = Cell::SOUTHEAST;
-
-  if (myrank == 0)
-  {
-    std::cout << "Domain matrices:" << std::endl;
-  }
-  printMatrices(myrank, mpi_numproc, NY, NX, domainView);
 
   //  std::cout << "Init Done Processor Rank " << myrank << std::endl;
 
@@ -338,65 +393,16 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
   diag_coords[1] = (own_coords[1] - 1 + dims[1]) % dims[1];
   MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
-  // collect submatrices to assemble full matrix for correctness testing
-  std::vector<int> submatrix_collection(dims[0] * dims[1] * NX * NY);
-
-  // get submatrices
-  MPI_Gather(solutionView.getVector().data(), solutionView.getVector().size(), MPI_INT,
-             submatrix_collection.data(), solutionView.getVector().size(), MPI_INT,
-             0, GRID_COMM);
-
-  // get coordinates of submatrices
-  std::vector<int> all_coords(2 * numprocs);
-  MPI_Gather(&coords, dims[0], MPI_INT,
-             all_coords.data(), dims[0], MPI_INT, 0, GRID_COMM);
+  // get whole grid before parallel run
+  int grid_size = dims[0]*dims[1]*(NX-2)*(NY-2);
+  std::vector<int> grid_before(grid_size);
+  grid_before = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
 
   MPI_Barrier(GRID_COMM);
 
   if (myrank == 0)
   {
-    std::cout << "All Coordinates:\n";
-    for (int i = 0; i < numprocs; ++i)
-    {
-      std::cout << "Process " << i << ": (" << all_coords[2 * i] << ", " << all_coords[2 * i + 1] << ")\n";
-    }
-
-    // assemble full matrix ###### IN PROGRESS ######
-    std::vector<int> submatrix_tmp(NX * NY);
-
-    for (int p = 0; p < dims[0] * dims[1]; p++)
-    {
-      int count = 0;
-      for (int k = p * NX * NY; k < (p + 1) * NX * NY; k++)
-      {
-        if (count == 6)
-        {
-          std::cout << std::endl;
-          count = 0;
-        }
-        std::cout << submatrix_collection[k];
-        count++;
-      }
-      std::cout << std::endl;
-    }
-
-    //// print full matrix
-    // std::cout << "Assembled full matrix:\n";
-    // for (int i = 0; i < 12; ++i)
-    //{
-    //   for (int j = 0; j < 12; ++j)
-    //   {
-    //     std::cout << (submatrix_collection[i * 12 + j] == 1 ? "■" : "□") << " ";
-    //   }
-    //   std::cout << std::endl;
-    // }
-  }
-
-  MPI_Barrier(GRID_COMM);
-
-  if (myrank == 0)
-  {
-    std::cout << "Solve Game of Life using 8 point stencil:" << std::endl
+    std::cout << "\nSolve Game of Life using 8 point stencil:" << std::endl
               << std::endl;
     std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << "++++++ Before Lifetime +++++++++++++++" << std::endl;
@@ -411,7 +417,7 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
 
   // START THE GAME OF LIFE
   auto start = MPI_Wtime();
-  ;
+  
   for (int iter = 0; iter <= iterations; ++iter)
   {
 
@@ -593,7 +599,21 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
       fflush(stdout);
     }
 
-    //printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+    printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+
+    // whole grid 
+    std::vector<int> grid_after(grid_size);
+    grid_after = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
+      
+    // sequential run
+    if (myrank == 0){
+      std::cout << "+++++++++++++++++ INITIAL MATRIX ++++++++++++++++++++\n" << std::endl;
+      printGrid(grid_before, resolution, resolution);
+      std::cout << "++++++++++++++++ AFTER PARALLEL RUN +++++++++++++++++\n" << std::endl;
+      printGrid(grid_after, resolution, resolution);
+      std::cout << "+++++++++++++++ AFTER SEQUENTIAL RUN ++++++++++++++++\n" << std::endl;
+      run_sequential(grid_before, resolution, resolution, iterations);
+    }
 
     std::array<double, 3> timings;
     timings[0] = seconds_sum;

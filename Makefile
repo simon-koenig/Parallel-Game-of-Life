@@ -13,8 +13,8 @@ CXXFLAGS := $(CXXFLAGS) -std=c++14 -O3 -Wall -pedantic -march=native
 NPROCS?=$$((1)) $$((32)) $$((8*32)) $$((16*32)) $$((32*32))
 RESOLUTION?=$$((1024*1024)) $$((10240*10240))
 
-ITER?=50
-REPETITION?=10
+ITER?=20
+REPETITION?=2
 
 StrongScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
