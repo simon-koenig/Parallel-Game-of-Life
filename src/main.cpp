@@ -39,10 +39,10 @@ int main(int argc, char *argv[])
 
   // parse command line arguments
   int rank = 0;
-  auto numproc = convertTo<int>(1, 4, argc, argv);
-  auto repetitions = convertTo<int>(2, 10, argc, argv);
-  auto resolution = convertTo<int>(3, 32, argc, argv);
-  auto iterations = convertTo<int>(4, 1000, argc, argv);
+  int numproc = 1;
+  auto repetitions = convertTo<int>(1, 10, argc, argv);
+  auto resolution = convertTo<int>(2, 32, argc, argv);
+  auto iterations = convertTo<int>(3, 1000, argc, argv);
   int ndims = 2;
 
   assert(resolution > 0);

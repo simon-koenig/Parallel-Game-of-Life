@@ -19,8 +19,10 @@ REPETITION?=10
 StrongScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $(RESOLUTION) ; do \
+		RES_ := $$((RES)) ; \
 		for NPROC in $(NPROCS) ; do \
-			mpirun -n $$((NPROC)) --use-hwthread-cpus ./bin/GameOfLifeMPI $$((NPROC)) $(REPETITION) $$((RES)) $(ITER) ; \
+			NPROC_ = $$((NPROC)) ; \
+			mpirun -n $(NPROC_) --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $(RES_) $(ITER) ; \
 		done ; \
 	done
 
@@ -28,13 +30,13 @@ WeakScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $$((1024*1024)) ; do \
 		for NPROC in $(NPROCS) ; do \
-			mpirun -n $$((NPROC)) --use-hwthread-cpus ./bin/GameOfLifeMPI $$((NPROC)) $(REPETITION) $$((RES*NPROC)) $(ITER) ; \
+			mpirun -n $$((NPROC)) --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER) ; \
 		done ; \
 	done
 
 DebugRun: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI 4 $(REPETITION) 10 $(ITER)
+	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 10 $(ITER)
 
 clean:
 	rm GameOfLifeMPI
