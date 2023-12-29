@@ -1,9 +1,0 @@
-
-# processes = 4 
-# repetitions = 2 
-# resolution = 10 
-# iterations = 8 
-
-summed time [s], mean time per processor [s], maximum time per processor [s] 
-0.001267,  0.000328, 0.000317
-0.000506,  0.000128, 0.000127

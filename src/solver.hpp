@@ -411,7 +411,7 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
   }
 
   // Print Grid before lifetime
-  printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+  // printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
   // Wait for all processes to be finished
   MPI_Barrier(GRID_COMM);
 
@@ -599,7 +599,7 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
       fflush(stdout);
     }
 
-    printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
+    // printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
 
     // whole grid 
     std::vector<int> grid_after(grid_size);
