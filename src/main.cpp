@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
     if (rank == 0)
     {
-      std::cout << "|++++++++++++++++++++> " << "Starting " << exp_counter << " Experiment!" << " |+++++++++++++++++++++|" << std::endl;
+      std::cout << "|++++++++++++++++++++> " << "Starting Experiment " <<  exp_counter << "! |+++++++++++++++++++++|" << std::endl;
     };
 
     if (rank == 0)
@@ -111,17 +111,20 @@ int main(int argc, char *argv[])
     };
   };
 
-  #ifdef USEMPI
-    MPI_Finalize();
-  #endif
-
-  char filename[120];
-  sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
-  StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
+  if (rank == 0)
+  {
+    char filename[120];
+    sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
+    StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
+  }
 
   free(total);
   free(mean);
   free(max);
+
+  #ifdef USEMPI
+    MPI_Finalize();
+  #endif
 
   return 0;
 }

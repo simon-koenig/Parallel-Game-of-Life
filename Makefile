@@ -14,7 +14,7 @@ NPROCS?=$$((1)) $$((32)) $$((8*32)) $$((16*32)) $$((32*32))
 RESOLUTION?=$(1024) $(10240)
 
 NPROCS_SMALL?=1 2 4
-RESOLUTION_SMALL?=10 100 500 1000
+RESOLUTION_SMALL?=500 1000 1500
 
 ITER?=20
 REPETITION?=10
@@ -33,7 +33,7 @@ StrongScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/arg
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $(RESOLUTION_SMALL) ; do \
 		for NPROC in $(NPROCS_SMALL) ; do \
-			echo "Strong Scaling Experiment with Resolution of $$RES and $$NPROC Processors \n" ; \
+			echo "Strong Scaling Experiment with Resolution of $$RES and $$NPROC Processors" ; \
 			# mpirun -n $$NPROC --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) ; \
 		done ; \
 	done
@@ -55,6 +55,7 @@ WeakScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/argum
 			mpirun -n $$NPROC --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER) ; \
 		done ; \
 	done
+	python3 ./src/PlotWeakScaling.py --P $(NPROCS_SMALL) --REPS $(REPETITION) --RES 100 --I $(ITER)
 
 DebugRun: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)

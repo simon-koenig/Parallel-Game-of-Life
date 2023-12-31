@@ -400,15 +400,15 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
 
   MPI_Barrier(GRID_COMM);
 
-  if (myrank == 0)
-  {
-    std::cout << "\nSolve Game of Life using 8 point stencil:" << std::endl
-              << std::endl;
-    std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "++++++ Before Lifetime +++++++++++++++" << std::endl;
-    std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
-    fflush(stdout);
-  }
+  //if (myrank == 0)
+  //{
+  //std::cout << "\nSolve Game of Life using 8 point stencil:" << std::endl
+  //            << std::endl;
+  //std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+  //  std::cout << "++++++ Before Lifetime +++++++++++++++" << std::endl;
+  //  std::cout << "++++++++++++++++++++++++++++++++++++++" << std::endl;
+  //  fflush(stdout);
+  //}
 
   // Print Grid before lifetime
   // printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
@@ -587,33 +587,34 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
     MPI_Allreduce(&seconds, &seconds_sum, 1, MPI_DOUBLE, MPI_SUM, GRID_COMM);
     MPI_Allreduce(&seconds, &seconds_max, 1, MPI_DOUBLE, MPI_MAX, GRID_COMM);
 
+    MPI_Barrier(GRID_COMM);
     //
     // Print results
     //
 
-    if (myrank == 0)
-    {
-      std::cout << "+++++++++++++++++++++++++++++++++++" << std::endl;
-      std::cout << "++++++After Lifetime+++++++++++++++" << std::endl;
-      std::cout << "+++++++++++++++++++++++++++++++++++" << std::endl;
-      fflush(stdout);
-    }
+    //if (myrank == 0)
+    //{
+    //  std::cout << "+++++++++++++++++++++++++++++++++++" << std::endl;
+    //  std::cout << "++++++After Lifetime+++++++++++++++" << std::endl;
+    //  std::cout << "+++++++++++++++++++++++++++++++++++" << std::endl;
+    //  fflush(stdout);
+    //}
 
     // printMatrices(myrank, mpi_numproc, NY, NX, solutionView);
 
     // whole grid 
-    std::vector<int> grid_after(grid_size);
-    grid_after = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
+    //std::vector<int> grid_after(grid_size);
+    //grid_after = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
       
     // sequential run
-    if (myrank == 0){
-      std::cout << "+++++++++++++++++ INITIAL MATRIX ++++++++++++++++++++\n" << std::endl;
-      printGrid(grid_before, resolution, resolution);
-      std::cout << "++++++++++++++++ AFTER PARALLEL RUN +++++++++++++++++\n" << std::endl;
-      printGrid(grid_after, resolution, resolution);
-      std::cout << "+++++++++++++++ AFTER SEQUENTIAL RUN ++++++++++++++++\n" << std::endl;
-      run_sequential(grid_before, resolution, resolution, iterations);
-    }
+    //if (myrank == 0){
+    //  std::cout << "+++++++++++++++++ INITIAL MATRIX ++++++++++++++++++++\n" << std::endl;
+    //  printGrid(grid_before, resolution, resolution);
+    //  std::cout << "++++++++++++++++ AFTER PARALLEL RUN +++++++++++++++++\n" << std::endl;
+    //  printGrid(grid_after, resolution, resolution);
+    //  std::cout << "+++++++++++++++ AFTER SEQUENTIAL RUN ++++++++++++++++\n" << std::endl;
+    // run_sequential(grid_before, resolution, resolution, iterations);
+    //}
 
     std::array<double, 3> timings;
     timings[0] = seconds_sum;
