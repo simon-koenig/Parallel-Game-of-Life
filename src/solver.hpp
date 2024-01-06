@@ -394,9 +394,9 @@ std::array<double, 3> solve(int resolution, int iterations, int mpi_rank,
   MPI_Cart_rank(GRID_COMM, diag_coords, &south_west_rank); // South west rank now holds the rank processor of the processor north east
 
   // get whole grid before parallel run
-  int grid_size = dims[0]*dims[1]*(NX-2)*(NY-2);
-  std::vector<int> grid_before(grid_size);
-  grid_before = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
+  //int grid_size = dims[0]*dims[1]*(NX-2)*(NY-2);
+  //std::vector<int> grid_before(grid_size);
+  //grid_before = getGrid(myrank, numprocs, dims, coords, NX, NY, solutionView, GRID_COMM);
 
   MPI_Barrier(GRID_COMM);
 
