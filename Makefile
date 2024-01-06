@@ -10,7 +10,7 @@ CXX=/usr/local/bin/g++-13
 MPICXX?=mpic++
 CXXFLAGS := $(CXXFLAGS) -std=c++14 -O3 -Wall -pedantic -march=native
 
-NPROCS?=1 32 256 512 1024
+NPROCS?=32 256 512 1024
 RESOLUTION?=1024 10240
 
 NPROCS_SMALL?=1 2 4
@@ -22,9 +22,11 @@ REPETITION?=20
 StrongScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $(RESOLUTION) ; do \
+		echo "Strong Scaling Experiment with Resolution of $$RES and 1 Processor"; \
+		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER); \
 		for NPROC in $(NPROCS) ; do \
 			echo "Strong Scaling Experiment with Resolution of $$RES and $$NPROC Processors" ; \
-			srun -t 5 -p q_student -N $$((NPROC/4)) --ntasks-per-node=4 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) ; \
+			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) ; \
 		done ; \
 	done
 
@@ -44,8 +46,11 @@ StrongScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/arg
 WeakScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in 1024 ; do \
+		echo "Weak Scaling Experiment with 1 Processor and Resolution of $$RES"; \
+		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER); \
 		for NPROC in $(NPROCS) ; do \
-			srun -t 5 -p q_student -N $$((NPROC/4)) --ntasks-per-node=4 ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER) ; \
+			echo "Weak Scaling Experiment with $$NPROC Processors and Resolution of $$RES"; \
+			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER) ; \
 		done ; \
 	done
 
@@ -65,6 +70,10 @@ WeakScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/argum
 DebugRun: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 11 $(ITER)
+
+SingleProcessor: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
+	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
+	srun -t 5 -p q_student -N 1 --tasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) 200 $(ITER)
 
 clean:
 	rm GameOfLifeMPI
