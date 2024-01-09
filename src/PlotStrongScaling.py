@@ -40,6 +40,9 @@ assert len(args.I) == 1, "Plotting for multiple numbers of iterations is not sup
 datapath = Path.cwd() / "data"
 figurepath = Path.cwd() / "figures" / "StrongScalingExperiment"
 
+# Insert sequential run
+args.P.insert(0, 1)
+
 # Iterate over all relevant files and read in data.
 data = {}
 for combination in itertools.product(args.P, args.REPS, args.RES, args.I):
