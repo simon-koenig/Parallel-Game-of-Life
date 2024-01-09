@@ -19,6 +19,8 @@ RESOLUTION_SMALL?=500 1000 1500
 ITER?=10
 REPETITION?=20
 
+TEST_RUN?=0
+
 StrongScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $(RESOLUTION) ; do \
@@ -72,7 +74,12 @@ WeakScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/argum
 
 DebugRun: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 11 $(ITER)
+	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 12 $(ITER) $(TEST_RUN)
+
+DebugRunATA: Makefile ./src/mainATA.cpp ./src/solverATA.hpp ./src/arguments.hpp
+	$(MPICXX) ./src/mainATA.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
+	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 12 $(ITER) $(TEST_RUN)
+
 
 SingleProcessor: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
 	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)

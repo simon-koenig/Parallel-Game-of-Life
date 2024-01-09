@@ -37,13 +37,13 @@ void StoreTimings(char* filename, int numproc, int repetitions, int resolution, 
 
 int main(int argc, char *argv[])
 {
-
   // parse command line arguments
   int rank = 0;
   int numproc = 1;
   auto repetitions = convertTo<int>(1, 10, argc, argv);
   auto resolution = convertTo<int>(2, 32, argc, argv);
   auto iterations = convertTo<int>(3, 1000, argc, argv);
+  bool test_run = convertTo<bool>(4, 0, argc, argv);
   int ndims = 2;
 
   assert(resolution > 0);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
       std::cout << "Start " << ndims << "-D Solver for [" << iterations << "] iterations with resolution of [" << resolution << "]" << std::endl;
     };
 
-    timings = solve(resolution, iterations, rank, numproc, ndims);
+    timings = solve(resolution, iterations, rank, numproc, ndims, test_run);
 
     if (rank == 0)
     {
