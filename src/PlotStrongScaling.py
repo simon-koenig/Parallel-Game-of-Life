@@ -79,9 +79,9 @@ for res in args.RES:
 
     # create and save individual runtime plot for each resolution
     runtime_axis.plot(args.P, mean_rt, "-")
+    runtime_axis.set_yscale('log')
     runtime_axis.fill_between(args.P, np.subtract(mean_rt, std_rt), np.add(mean_rt, std_rt), alpha=0.2)
     runtime_axis.set_title("Mean runtimes of resolution " + str(res) + " for " + str(args.I[0]) + " iterations") 
-    runtime_axis.set_xticks(range(min(args.P) , max(args.P) + 1))
     runtime_axis.set_xlabel("Number of processes")
     runtime_axis.set_ylabel("Mean runtime in sec")
     runtime_plot.savefig(str(figurepath) + "/RUNTIME_REPS" + str(args.REPS[0]) + "RES" + str(res) + "I" + str(args.I[0]) + ".svg")
@@ -96,7 +96,6 @@ for res in args.RES:
 
 # Adapt and save speed-up plot
 speedup_axis.set_title("Mean speed-up for " + str(args.I[0]) + " iterations") 
-speedup_axis.set_xticks(range(min(args.P[1:]) , max(args.P) + 1))
 speedup_axis.set_xlabel("Number of processes")
 speedup_axis.set_ylabel("Mean speed-up")
 speedup_axis.legend()
@@ -105,7 +104,6 @@ speedup_plot.savefig(str(figurepath) + "/SPEEDUP_REPS" + str(args.REPS[0]) + "I"
 
 # Adapt and save parallel efficiency plot
 pareff_axis.set_title("Mean parallel efficiency for " + str(args.I[0]) + " iterations") 
-pareff_axis.set_xticks(range(min(args.P[1:]) , max(args.P) + 1))
 pareff_axis.set_xlabel("Number of processes")
 pareff_axis.set_ylabel("Mean parallel effiency")
 pareff_axis.legend()
