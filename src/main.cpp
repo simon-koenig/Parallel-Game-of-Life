@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <vector>
 #include <array>
+#include <cstring>
 #ifdef USEMPI
 #include <mpi.h>
 #endif

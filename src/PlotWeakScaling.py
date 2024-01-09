@@ -36,6 +36,9 @@ args = parser.parse_args()
 assert len(args.REPS) == 1, "Plotting for multiple numbers of repetitions is not supported."
 assert len(args.I) == 1, "Plotting for multiple numbers of iterations is not supported."
 
+# Insert sequential run
+args.P.insert(0, 1)
+
 # Get path of "data"-folder and "figures"-folder
 datapath = Path.cwd() / "data"
 figurepath = Path.cwd() / "figures" / "WeakScalingExperiment"
@@ -44,7 +47,7 @@ figurepath = Path.cwd() / "figures" / "WeakScalingExperiment"
 data = {}
 
 for combination in itertools.product(args.P, args.REPS, args.RES, args.I):
-    filename = "/P" + str(combination[0]) + "REPS" + str(combination[1]) + "RES" + str(combination[2]*combination[0]) + "I" + str(combination[3]) + ".txt"
+    filename = "/P" + str(combination[0]) + "REPS" + str(combination[1]) + "RES" + str(round(combination[2]*np.sqrt(combination[0]))) + "I" + str(combination[3]) + ".txt"
     data[combination] = read_timing_file(str(datapath) + filename)
 
 for res in args.RES:
@@ -65,7 +68,6 @@ for res in args.RES:
     runtime_axis.plot(args.P, mean_rt, "-")
     runtime_axis.fill_between(args.P, np.subtract(mean_rt, std_rt), np.add(mean_rt, std_rt), alpha=0.2)
     runtime_axis.set_title("Mean runtimes of resolution " + str(res) + " (P=1) for " + str(args.I[0]) + " iterations") 
-    runtime_axis.set_xticks(range(min(args.P) , max(args.P) + 1))
     runtime_axis.set_xlabel("Number of processes")
     runtime_axis.set_ylabel("Mean runtime in sec")
     runtime_plot.savefig(str(figurepath) + "/RUNTIME_REPS" + str(args.REPS[0]) + "RES" + str(res) + "I" + str(args.I[0]) + ".svg")
