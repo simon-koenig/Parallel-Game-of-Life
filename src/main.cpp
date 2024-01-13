@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
   if (rank == 0)
   {
     char filename[120];
-    sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
+    sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/SENDRECV/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
     StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
   }
 

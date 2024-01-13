@@ -6,84 +6,55 @@
 # module load mpi/openmpi-x86_64
 # module load pmi/pmix-x86_64
 
-CXX=/usr/local/bin/g++-13
 MPICXX?=mpic++
 CXXFLAGS := $(CXXFLAGS) -std=c++14 -O3 -Wall -pedantic -march=native
 
-NPROCS ?= 32 256 512 1024
-RESOLUTION?=1024 # 10240
+NPROCS ?=32 256 512 1024
+RESOLUTION?=1024 10240
 
-NPROCS_SMALL?=1 2 4
-RESOLUTION_SMALL?=500 1000 1500
-
-ITER?=10
+ITER?=50
 REPETITION?=20
 
-TEST_RUN?=0
+TEST_CORRECTNESS?=0
+IMPLEMENTATION=?0 # Implementation 0 = SEND_RECV, Implementation 1 = ALLTOALL
+SOLVER:=./src/solver.hpp
+MAIN:=./src/main.cpp
 
-StrongScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
+ifeq ($(IMPLEMENTATION), 1)
+SOLVER=./src/solverATA.hpp
+MAIN=./src/mainATA.cpp
+endif
+
+StrongScalingExperiment: Makefile ./src/arguments.hpp $(MAIN) $(SOLVER)
+	$(MPICXX) $(MAIN) -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in $(RESOLUTION) ; do \
 		echo "Strong Scaling Experiment with Resolution of $$RES and 1 Processor"; \
-		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER); \
+		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) $(TEST_CORRECTNESS); \
 		for NPROC in $(NPROCS) ; do \
 			echo "Strong Scaling Experiment with Resolution of $$RES and $$NPROC Processors" ; \
-			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) ; \
+			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) $(TEST_CORRECTNESS); \
 		done ; \
 	done
 
 EvaluateStrongScalingExperiment: ./src/PlotStrongScaling.py
-	python3 ./src/PlotStrongScaling.py --P $(NPROCS) --REPS $(REPETITION) --RES $(RESOLUTION) --I $(ITER)
+	python3 ./src/PlotStrongScaling.py --P $(NPROCS) --REPS $(REPETITION) --RES $(RESOLUTION) --I $(ITER) --IMPL $(IMPLEMENTATION)
 
-StrongScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp ./src/PlotStrongScaling.py
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	@for RES in $(RESOLUTION_SMALL) ; do \
-		for NPROC in $(NPROCS_SMALL) ; do \
-			echo "Strong Scaling Experiment with Resolution of $$RES and $$NPROC Processors" ; \
-			mpirun -n $$NPROC --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) ; \
-		done ; \
-	done
-	python3 ./src/PlotStrongScaling.py --P $(NPROCS_SMALL) --REPS $(REPETITION) --RES $(RESOLUTION_SMALL) --I $(ITER)
-
-WeakScalingExperiment: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
+WeakScalingExperiment: Makefile $(MAIN) $(SOLVER) ./src/arguments.hpp
+	$(MPICXX) $(MAIN) -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
 	@for RES in 1024 ; do \
 		echo "Weak Scaling Experiment with 1 Processor and Resolution of $$RES"; \
-		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER); \
+		srun -t 5 -p q_student -N 1 --ntasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) $$RES $(ITER) $(TEST_CORRECTNESS); \
 		for NPROC in $(NPROCS) ; do \
 			tmp=$$( (echo "scale=20;(sqrt($$NPROC)*$$RES)"|bc) ); \
 			tmp=$$( (printf "%.f" $$tmp) ); \
 			echo "Weak Scaling Experiment with $$NPROC Processors and Resolution of $$tmp" ; \
-			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$((tmp)) $(ITER) ; \
+			srun -t 5 -p q_student -N $$((NPROC/32)) --ntasks-per-node=32 ./bin/GameOfLifeMPI $(REPETITION) $$((tmp)) $(ITER) $(TEST_CORRECTNESS); \
 		done ; \
 	done
 
 EvaluateWeakScalingExperiment: ./src/PlotWeakScaling.py
-	python3 ./src/PlotWeakScaling.py --P $(NPROCS) --REPS $(REPETITION) --RES 1024 --I $(ITER)	
+	python3 ./src/PlotWeakScaling.py --P $(NPROCS) --REPS $(REPETITION) --RES 1024 --I $(ITER) --IMPL $(IMPLEMENTATION)	
 
-WeakScalingExperimentSmall: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	for RES in 500 ; do \
-		for NPROC in $(NPROCS) ; do \
-			tmp=`awk ' { print sqrt($$NPROC) }'`;\
-			echo "Weak Scaling Experiment with Resolution of $$RES and $${tmp} Processors \n";\
-			mpirun -n $$NPROC --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) $$((RES*NPROC)) $(ITER);\
-		done ; \
-	done
-	python3 ./src/PlotWeakScaling.py --P $(NPROCS_SMALL) --REPS $(REPETITION) --RES 500 --I $(ITER)
-
-DebugRun: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 12 $(ITER) $(TEST_RUN)
-
-DebugRunATA: Makefile ./src/mainATA.cpp ./src/solverATA.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/mainATA.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	mpirun -n 4 --use-hwthread-cpus ./bin/GameOfLifeMPI $(REPETITION) 12 $(ITER) $(TEST_RUN)
-
-
-SingleProcessor: Makefile ./src/main.cpp ./src/solver.hpp ./src/arguments.hpp
-	$(MPICXX) ./src/main.cpp -o ./bin/GameOfLifeMPI -lpthread -DUSEMPI $(CXXFLAGS)
-	srun -t 5 -p q_student -N 1 --tasks-per-node=1 ./bin/GameOfLifeMPI $(REPETITION) 200 $(ITER)
 
 clean:
 	rm GameOfLifeMPI

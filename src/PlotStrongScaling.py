@@ -30,15 +30,21 @@ parser.add_argument('--RES', dest="RES", type=int, nargs='+',
                     help='Supply grid resolution of the benchmarks')
 parser.add_argument('--I', dest="I", type=int, nargs='+',
                     help='Supply number of iterations of the benchmarks')
+parser.add_argument('--IMPL', dest="IMPL", type=int,
+                    help='Supply implementation which was used')
 args = parser.parse_args()
 
 # Check that exactly one number of repetitions and iterations is supplied.
 assert len(args.REPS) == 1, "Plotting for multiple numbers of repetitions is not supported."
 assert len(args.I) == 1, "Plotting for multiple numbers of iterations is not supported."
 
-# Get path of "data"-folder and "figures"-folder
-datapath = Path.cwd() / "data"
-figurepath = Path.cwd() / "figures" / "StrongScalingExperiment"
+# Get data from right folder according to the used implementation
+if (args.IMPL == 0):
+    datapath = Path.cwd() / "data" / "SENDRECV"
+    figurepath = Path.cwd() / "figures" / "SENDRECV"/ "StrongScalingExperiment"
+elif (args.IMPL == 1):
+    datapath = Path.cwd() / "data" / "ALLTOALL"
+    figurepath = Path.cwd() / "figures" / "ALLTOALL" / "StrongScalingExperiment"
 
 # Insert sequential run
 args.P.insert(0, 1)
