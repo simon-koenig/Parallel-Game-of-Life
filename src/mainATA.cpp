@@ -119,9 +119,9 @@ int main(int argc, char *argv[])
   MPI_Finalize();
 #endif
 
-  // char filename[120];
-  // sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/ALLTOALL/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
-  // StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
+  char filename[120];
+  sprintf(filename, "%s%d%s%d%s%d%s%d%s", "./data/ALLTOALL/P", numproc, "REPS", repetitions, "RES", resolution, "I", iterations, ".txt");
+  StoreTimings(filename, numproc, repetitions, resolution, iterations, total, mean, max);
 
   free(total);
   free(mean);
