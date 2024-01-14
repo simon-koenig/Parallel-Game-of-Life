@@ -60,7 +60,7 @@ respectively,
 make WeakScalingExperiment IMPLEMENTATION=X
 ```
 
-After generating the benchmark data, one can generate the results by running:
+After generating the benchmark data, one can generate the result plots by running:
 ```sh
 make EvaluateStrongScalingExperiment IMPLEMENTATION=X
 ```
@@ -70,3 +70,68 @@ make EvaluateWeakScalingExperiment IMPLEMENTATION=X
 ```
 
 For further information about variation options, please refer to comments in the makefile and code.
+
+# Folder structure
+ AssignmentDescription.pdf
+├── LICENSE
+├── Makefile
+├── README.md
+├── bin
+│   └── GameOfLifeMPI
+├── data
+│   ├── ALLTOALL
+│   │   ├── P1024REPS20RES10240I50.txt
+│   │   ├── P1024REPS20RES1024I50.txt
+│   │   ├── P1024REPS20RES32768I50.txt
+│   │   ├── P1REPS20RES10240I50.txt
+│   │   ├── P1REPS20RES1024I50.txt
+│   │   ├── P256REPS20RES10240I50.txt
+│   │   ├── P256REPS20RES1024I50.txt
+│   │   ├── P256REPS20RES16384I50.txt
+│   │   ├── P32REPS20RES10240I50.txt
+│   │   ├── P32REPS20RES1024I50.txt
+│   │   ├── P32REPS20RES5793I50.txt
+│   │   ├── P512REPS20RES10240I50.txt
+│   │   ├── P512REPS20RES1024I50.txt
+│   │   └── P512REPS20RES23170I50.txt
+│   └── SENDRECV
+│       ├── P1024REPS20RES10240I50.txt
+│       ├── P1024REPS20RES1024I50.txt
+│       ├── P1024REPS20RES32768I50.txt
+│       ├── P1REPS20RES10240I50.txt
+│       ├── P1REPS20RES1024I50.txt
+│       ├── P256REPS20RES10240I50.txt
+│       ├── P256REPS20RES1024I50.txt
+│       ├── P256REPS20RES16384I50.txt
+│       ├── P32REPS20RES10240I50.txt
+│       ├── P32REPS20RES1024I50.txt
+│       ├── P32REPS20RES5793I50.txt
+│       ├── P512REPS20RES10240I50.txt
+│       ├── P512REPS20RES1024I50.txt
+│       └── P512REPS20RES23170I50.txt
+├── figures
+│   ├── ALLTOALL
+│   │   ├── StrongScalingExperiment
+│   │   │   ├── PARALLELEFFICIENCY_REPS20I50.svg
+│   │   │   ├── RUNTIME_REPS20RES10240I50.svg
+│   │   │   ├── RUNTIME_REPS20RES1024I50.svg
+│   │   │   └── SPEEDUP_REPS20I50.svg
+│   │   └── WeakScalingExperiment
+│   │       └── RUNTIME_REPS20RES1024I50.svg
+│   └── SENDRECV
+│       ├── StrongScalingExperiment
+│       │   ├── PARALLELEFFICIENCY_REPS20I50.svg
+│       │   ├── RUNTIME_REPS20RES10240I50.svg
+│       │   ├── RUNTIME_REPS20RES1024I50.svg
+│       │   └── SPEEDUP_REPS20I50.svg
+│       └── WeakScalingExperiment
+│           └── RUNTIME_REPS20RES1024I50.svg
+└── src
+    ├── PlotStrongScaling.py
+    ├── PlotWeakScaling.py
+    ├── arguments.hpp
+    ├── game_sequential.hpp
+    ├── main.cpp
+    ├── mainATA.cpp
+    ├── solver.hpp
+    └── solverATA.hpp
