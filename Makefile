@@ -1,11 +1,3 @@
-# requirements on ubuntu
-# sudo apt-get build-essentials
-# sudo apt-get install openmpi-bin openmpi-common libopenmpi-dev
-
-# required modules on cluster
-# module load mpi/openmpi-x86_64
-# module load pmi/pmix-x86_64
-
 MPICXX?=mpic++
 CXXFLAGS := $(CXXFLAGS) -std=c++14 -O3 -Wall -pedantic -march=native
 
@@ -15,8 +7,10 @@ RESOLUTION?=1024 10240
 ITER?=50
 REPETITION?=20
 
-TEST_CORRECTNESS?=0
+TEST_CORRECTNESS?=0 # if set to 1, visual representations of parallel and sequential result will be printed
 IMPLEMENTATION=?0 # Implementation 0 = SEND_RECV, Implementation 1 = ALLTOALL
+
+
 SOLVER:=./src/solver.hpp
 MAIN:=./src/main.cpp
 
@@ -56,6 +50,17 @@ EvaluateWeakScalingExperiment: ./src/PlotWeakScaling.py
 	python3 ./src/PlotWeakScaling.py --P $(NPROCS) --REPS $(REPETITION) --RES 1024 --I $(ITER) --IMPL $(IMPLEMENTATION)	
 
 
-clean:
-	rm GameOfLifeMPI
+CleanBinary:
+	rm bin/GameOfLifeMPI
+
+CleanData:
+	rm data/ALLTOALL/*
+	rm data/SENDRECV/*
+
+CleanFigures:
+	rm figures/ALLTOALL/StrongScalingExperiment/*
+	rm figures/ALLTOALL/WeakScalingExperiment/*
+	rm figures/SENDRECV/StrongScalingExperiment/*
+	rm figures/SENDRECV/WeakScalingExperiment/*
+	
 
