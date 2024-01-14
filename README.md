@@ -72,6 +72,7 @@ make EvaluateWeakScalingExperiment IMPLEMENTATION=X
 For further information about variation options, please refer to comments in the makefile and code.
 
 # Folder structure
+```sh
  AssignmentDescription.pdf
 ├── LICENSE
 ├── Makefile
@@ -135,3 +136,4 @@ For further information about variation options, please refer to comments in the
     ├── mainATA.cpp
     ├── solver.hpp
     └── solverATA.hpp
+```
